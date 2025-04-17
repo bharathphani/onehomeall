@@ -1,0 +1,72 @@
+services:
+  configserver:
+    image: "hrbpkumar/config:latest"
+    container_name: config-server
+    ports:
+      - "8071:8071"
+    healthcheck:
+      test: "curl --fail --silent localhost:8071/actuator/health |grep UP ||exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - onehome-net
+
+  eureka:
+    image: "hrbpkumar/eureka:latest"
+    container_name: eureka
+    ports:
+      - "8070:8070"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - onehome-net
+    environment:
+      SPRING_APPLICATION_NAME: "eurekaserver"
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_PROFILES_ACTIVE: default
+
+  onehome:
+    image: "hrbpkumar/onehomeuser:latest"
+    container_name: onehome-user
+    ports:
+      - "8081:8081"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - onehome-net
+    environment:
+      SPRING_APPLICATION_NAME: "onehomeuser"
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_PROFILES_ACTIVE: default
+
+  socialsecurity:
+    image: "hrbpkumar/socialsecurity:latest"
+    container_name: socialsec
+    ports:
+      - "8082:8082"
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - onehome-net
+
+networks:
+  onehome-net:
+    driver: "bridge"
